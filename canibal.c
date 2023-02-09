@@ -6,8 +6,8 @@
 #define CANNIBAL 0
 #define MISSIONARY 1
 #define VOID 3
-#define SIDE_1 1
-#define SIDE_2 2
+#define SIDE_1 0
+#define SIDE_2 1
 #define N_CANNIBAL 3
 #define N_MISSIONARY 3
 #define MAX_CONFIG 5
@@ -56,33 +56,44 @@ void insert_three(Three *three, Three *aux){
    
 }
 
-void children_generate(Three *three, Three *father, int config[][2], int ind_config){
+Three *children_generate(Three *three, Three *prev_node, int config[][2], int ind_config){
+    // --- SE NAO ATINGIR TODAS AS CONFIGURAÇÕES ---
     if(ind_config < MAX_CONFIG){
+        if(three == NULL){
+            // --- CRIAR FILHO ---
+            three = (Three *)malloc(sizeof(Three));
 
-        Three aux;
+            three->next = NULL;
+            three->right = NULL;
 
-        if(father->boat_margin == SIDE_1){
-            if(father->n_cannibal + config[ind_config][CANNIBAL] > N_CANNIBAL || father->n_missionary + config[ind_config][MISSIONARY] > N_MISSIONARY){
-                children_generate(three, father, config, ind_config++);
+            // --- CHECAR SE O NÓ ANTERIOR TEM PAI (SE NÃO TIVER, ELE É A RAIZ) ---
+            if(prev_node->father != NULL){
+                three->father = prev_node->father;
             }
-            aux.boat_margin = SIDE_2;
-            aux.n_cannibal = father->n_cannibal + config[ind_config][CANNIBAL];
-            aux.n_missionary = father->n_missionary + config[ind_config][MISSIONARY];
-
-        }
-        else{
-            if(father->n_cannibal - config[ind_config][CANNIBAL] < 0 || father->n_missionary - config[ind_config][MISSIONARY] < 0){
-                children_generate(three, father, config, ind_config++);
-            }
-            aux.boat_margin = SIDE_1;
-            aux.n_cannibal = father->n_cannibal - config[ind_config][CANNIBAL];
-            aux.n_missionary = father->n_missionary - config[ind_config][MISSIONARY];
-        }
-
-        if(aux.boat_margin != 0){
+            else three->father = prev_node;
             
+
+            // --- SE O BARCO ESTIVER NA MARGEM 1, SUBTRAÇÃO NO CÁLCULO ---
+            if(prev_node->boat_margin == SIDE_1){
+                three->boat_margin = SIDE_2;
+                three->n_cannibal = prev_node->n_cannibal - config[ind_config][CANNIBAL];
+                three->n_missionary = prev_node->n_missionary - config[ind_config][MISSIONARY];
+            }
+            // --- SE NÃO, ADIÇÃO NO CÁLCULO ---
+
+            else{
+                three->boat_margin = SIDE_1;
+                three->n_cannibal = prev_node->n_cannibal + config[ind_config][CANNIBAL];
+                three->n_missionary = prev_node->n_missionary + config[ind_config][MISSIONARY];
+            }
         }
+        // --- IR PARA O OUTRO FILHO COM OUTRA CONFIGURAÇÃO ---
+        three->right = children_generate(three->right, three, config, ++ind_config);
+        
     }
+    
+    // --- RETORNA O RAMO ---
+    return three;
 }
 
 int main(){
@@ -91,6 +102,7 @@ int main(){
 
     // --- POSSIBLES CONFIG ---
     int config[5][2] = {{1, 0}, {0, 1}, {1, 1},{2, 0}, {0, 2}};
+    three->next = children_generate(three->next, three, config, 0);
 
     // while(response_check(three)){
         
