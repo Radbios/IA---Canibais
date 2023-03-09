@@ -5,14 +5,16 @@
 
 #define TAM 14 // --- TAMANHO DA MATRIZ DE ADJACENCIA ---
 #define VOID -1 // --- DEFINE VOID (VAZIO) ---
+#define VELOCIDADE_MEDIA 30.0 // --- VELOCIDADE MEDIA 30KM/H
+#define BALDIACAO (VELOCIDADE_MEDIA/60.0)*4.0 // --- BALDIACAO 4MIN ---
 #define TRUE 1
 #define FALSE 0
-
+ 
 
 // --- STRUCT DA ARVORE ---
 typedef struct node {
-    int value;
-    int realValue;
+    float value;
+    float realValue;
     int id;
     int visited;
     struct node* left;
@@ -145,7 +147,7 @@ Node* insert(Node* node, int id, int value, int realValue) {
 void print_root(Node* node) {
     if (node != NULL) {
         print_root(node->left);
-        printf("%d(%d)(%d) ", node->id, node->value, node->realValue);
+        printf("%d(%f)(%f) ", node->id, node->value, node->realValue);
         print_root(node->right);
     }
 }
@@ -153,22 +155,6 @@ void print_root(Node* node) {
 // --- INSERIR PONTEIRO PAI NUM NÓ FILHO ---
 void *insert_father(Node* node, Node* father){
     node->father = father;
-}
-
-// --- INSERIR FILHOS DE UM NÓ NA ARVORE ---
-Node* insert_children(Node* root, Node* queue, Node* currentNode, int arrival){
-    int i;
-    for (i = 0; i < TAM; i++)
-    {
-        if(adjacenceMap[currentNode->id - 1][i] != VOID && !visitedMap[i]){
-            int realDistance = adjacenceMap[currentNode->id - 1][i] + currentNode->realValue; // g(childrenNode)
-            int distance = realDistance + heuristicMap[i][arrival-1]; // f(childrenNode) = g(childrenNode) + h(childrenNode)
-            insert(root, i + 1, distance, realDistance); // --- INSERE O FILHO NA ARVORE ---
-            insert(queue, i+1, distance, realDistance); // --- INSERE O FILHO NA FILA ---
-            insert_father(search(root, i+1, distance), currentNode); // --- INSERE O PAI DO NÓ ---
-        }
-    }
-    return root;
 }
 
 // --- PRINTAR ROTA(PELO PAI) ---
@@ -190,15 +176,19 @@ void init_(Node *root, Node *queue, int arrival){
             printf("Meno caminho: ");
             print_route(currentNode);
             printf("\n");
+            printf("Tempo gasto: %.2fmin", (currentNode->realValue/VELOCIDADE_MEDIA)*60);
+            printf("\n");
             break;
         }
         if(!visitedMap[currentNodeQueue->id-1]){
             int i;
+            float realDistance, distance;
+            // --- INSERIR FILHOS DE UM NÓ ---
             for (i = 0; i < TAM; i++)
             {
                 if(adjacenceMap[currentNode->id - 1][i] != VOID && !visitedMap[i]){
-                    int realDistance = adjacenceMap[currentNode->id - 1][i] + currentNode->realValue; // g(childrenNode)
-                    int distance = realDistance + heuristicMap[i][arrival-1]; // f(childrenNode) = g(childrenNode) + h(childrenNode)
+                    realDistance = adjacenceMap[currentNode->id - 1][i] + currentNode->realValue + BALDIACAO; // g(childrenNode)
+                    distance = realDistance + heuristicMap[i][arrival-1]; // f(childrenNode) = g(childrenNode) + h(childrenNode)
                     insert(root, i + 1, distance, realDistance); // --- INSERE O FILHO NA ARVORE ---
                     insert(queue, i+1, distance, realDistance); // --- INSERE O FILHO NA FILA ---
                     insert_father(search(root, i+1, distance), currentNode); // --- INSERE O PAI DO NÓ ---
