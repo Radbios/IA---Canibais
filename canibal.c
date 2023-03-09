@@ -1,166 +1,180 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
 
-#define CANNIBAL 0 
-#define MISSIONARY 1  
-#define NUMERO_POSSIBILIDADES 5   
-#define CANNIBAL 0
-#define MISSIONARY 1
-#define LADO1 0
-#define LADO2 1
+// --- DEFINES ---
+#define CANNIBAL 0  // --- INDICE DOS CANIBAIS ---
+#define MISSIONARY 1    // --- INDICE DOS MISSIONÁRIOS ---
+#define SIDE_1 0    // --- MARGEM 1 DO RIO ---
+#define SIDE_2 1    // --- MARGEM 2 DO RIO ---
+#define N_CANNIBAL 3 // --- NUMERO DE CANIBAIS (INICIAL) ---
+#define N_MISSIONARY 3 // --- NUMERO DE MISSIONARIOS (INICIAL) ---
+#define MAX_CONFIG 5    // --- NUMERO MAXIMO DE CONFIGURAÇÕES DE TRAVESSIA ---
+#define START_BORDER 0  // --- LIMITE DE BUSCA ---
 
 #define TRUE 1
 #define FALSE 0
 
+// --- END DEFINES ---
 
-typedef struct arvore{
-    int deep;
-    int m[4];
-    int bote;
-    struct arvore *pai; 
-    struct arvore *filho;
-    struct arvore *irmao;
-} Arvore;
+// --- STRUCTS AND GLOBAL VARIABLES ---
+typedef struct tree{
+    int id; // --- IDENTIFICADOR ---
+    int line; // --- NUMERO DE TRAVESSIAS ---
+    int n_missionary; // --- NUMERO DE MISSIONÁRIOS --- 
+    int n_cannibal; // --- NUMERO DE CANIBAIS ---
+    int boat_margin; // --- MARGEM Q O BOTE SE ENCONTRA ---
+    struct tree *father; // --- NÓ PAI ---
+    struct tree *next; // --- NÓ FILHO ---
+    struct tree *right; // --- NÓ IRMÃO ---
+} Tree;
 
-int possibilidades[5][2] = {{1, 0}, {0, 1}, {1, 1},{2, 0}, {0, 2}};
+int idCount = -1;
+int config[5][2] = {{1, 0}, {0, 1}, {1, 1},{2, 0}, {0, 2}};
 
-Arvore* iniciar_arvore(){
-    Arvore *arvore = (Arvore*)malloc(sizeof(Arvore));
-    arvore->m[0] = 3;
-    arvore->m[1] = 3;
-    arvore->m[2] = 0;
-    arvore->m[3] = 0;
-    arvore->bote = 0;
-    arvore->deep = 0;
-    arvore->pai = NULL;
-    arvore->filho = NULL;
-    arvore->irmao = NULL;
 
-    return arvore;
+// --- END STRUCTS AND GLOBAL VARIABLES ---
+
+// --- INCREMENT ID ---
+int id(){
+   idCount++;
+   return idCount; 
 }
 
+// --- INIT tree IN SIDE ONE (ORIGIN)---
+Tree* init(){
+    Tree *tree = (Tree*)malloc(sizeof(Tree));
+    tree->n_cannibal = N_CANNIBAL;
+    tree->n_missionary = N_MISSIONARY;
+    tree->boat_margin = SIDE_1;
+    tree->father = NULL;
+    tree->next = NULL;
+    tree->right = NULL;
+    tree->id = id();
+    tree->line = 0;
 
-int checarSolucao(Arvore *arvore){
-    if(arvore->m[2] == 3 && arvore->m[3] == 3){
+    return tree;
+}
+// --- END INIT ---
+
+// --- CHECK tree CURRENT STATE ---
+int is_solution(Tree *tree){
+    if(tree->n_cannibal == 0 && tree->n_missionary == 0){
         return TRUE;
     }
     else return FALSE;
 }
+// --- END CHECK ---
 
-void printarSolucao(Arvore *arvore){
-    printf("profundidade : %d\n", arvore->deep);
-    printf("MARGEM 1: Nº de Canibais: %d\t\tNº de Missionários: %d\n", arvore->m[0], arvore->m[1]);
-    printf("MARGEM 2: Nº de Canibais: %d\t\tNº de Missionários: %d\n", arvore->m[2], arvore->m[3]);
-
-    if(arvore->pai != NULL){
-        printarSolucao(arvore->pai);
-    }
-}
-int checarCondicao(Arvore *arvore){
-    if((arvore->m[CANNIBAL] > arvore->m[MISSIONARY] && arvore->m[MISSIONARY] > 0) || (arvore->m[CANNIBAL+2] > arvore->m[MISSIONARY+2] && arvore->m[MISSIONARY+2] > 0)){
+int condicion_is_valid(Tree *tree){
+    if((tree->n_cannibal > tree->n_missionary && tree->n_missionary > 0) || (N_CANNIBAL - tree->n_cannibal > N_MISSIONARY - tree->n_missionary && tree->n_missionary < N_MISSIONARY)){
         return FALSE;
     }
     return TRUE;
 }
+// --- GERAR FILHOS ---
+Tree *children_generate(Tree *tree, Tree *prev_node, int ind_config){
+    // --- SE NAO ATINGIR TODAS AS CONFIGURAÇÕES ---
+    if(ind_config < MAX_CONFIG && condicion_is_valid(prev_node)){
 
-Arvore *criarFilhos(Arvore *arvore, Arvore *prev_node, int ind_possibilidades){
-  
-    if(ind_possibilidades < NUMERO_POSSIBILIDADES && checarCondicao(prev_node)){
-        int n_cannibalM1 = 0;
-        int n_cannibalM2 = 0;
-        int n_missionaryM1 = 0;
-        int n_missionaryM2 = 0;
-        int bote = 0;
-       
-        if(prev_node->bote == LADO1){
-            bote = LADO2;
-            n_cannibalM1 = prev_node->m[CANNIBAL] - possibilidades[ind_possibilidades][CANNIBAL];
-            n_cannibalM2 = prev_node->m[CANNIBAL+2] + possibilidades[ind_possibilidades][CANNIBAL];
-            n_missionaryM1 = prev_node->m[MISSIONARY] - possibilidades[ind_possibilidades][MISSIONARY];
-            n_missionaryM2 = prev_node->m[MISSIONARY+2] + possibilidades[ind_possibilidades][MISSIONARY];
-        }
-        else{
-            bote = LADO1;
-            n_cannibalM1 = prev_node->m[CANNIBAL] + possibilidades[ind_possibilidades][CANNIBAL];
-            n_cannibalM2 = prev_node->m[CANNIBAL+2] - possibilidades[ind_possibilidades][CANNIBAL];
-            n_missionaryM1 = prev_node->m[MISSIONARY] + possibilidades[ind_possibilidades][MISSIONARY];
-            n_missionaryM2 = prev_node->m[MISSIONARY+2] - possibilidades[ind_possibilidades][MISSIONARY]; 
-        }
+        // --- VARIAVEIS AUXILIARES ---
+        int n_cannibalSUB = prev_node->n_cannibal - config[ind_config][CANNIBAL];
+        int n_cannibalAD = prev_node->n_cannibal + config[ind_config][CANNIBAL];
+        int n_missionarySUB = prev_node->n_missionary - config[ind_config][MISSIONARY];
+        int n_missionaryAD = prev_node->n_missionary + config[ind_config][MISSIONARY];
 
-      
-        if(n_cannibalM1 >= 0 && n_cannibalM1 <= 3 && n_missionaryM1 >= 0 && n_missionaryM1 <= 3){
-            if(arvore == NULL){
-                
-                arvore = (Arvore *)malloc(sizeof(Arvore));
+        // --- CHECAR SE O NUMERO DE MISSIONARIOS E CANIBAIS ESTAO DENTRO DO LIMITE, 0 <= X <= N_MISSIONARY
+        if((prev_node->boat_margin == SIDE_1 && n_cannibalSUB >= 0 && n_missionarySUB >=0) || (prev_node->boat_margin == SIDE_2 && n_cannibalAD <= N_CANNIBAL && n_missionaryAD <=N_MISSIONARY) ){
+            if(tree == NULL){
+                // --- CRIAR FILHO ---
+                tree = (Tree *)malloc(sizeof(Tree));
 
-                arvore->filho = NULL;
-                arvore->irmao = NULL;
-                arvore->pai = prev_node;
-                arvore->deep = prev_node->deep + 1;
-                
-    
-                arvore->bote = bote;
-                arvore->m[CANNIBAL] = n_cannibalM1;
-                arvore->m[MISSIONARY] = n_missionaryM1;
-                arvore->m[CANNIBAL+2] = n_cannibalM2;
-                arvore->m[MISSIONARY+2] = n_missionaryM2;
-                
+                tree->id = id();
+                tree->line = prev_node->line+1;
+                tree->next = NULL;
+                tree->right = NULL;
+                tree->father = prev_node;
+
+                // --- SE O BARCO ESTIVER NA MARGEM 1, SUBTRAÇÃO NO CÁLCULO ---
+                if(prev_node->boat_margin == SIDE_1){
+                    tree->boat_margin = SIDE_2;
+                    tree->n_cannibal = n_cannibalSUB;
+                    tree->n_missionary = n_missionarySUB;
+                }
+                // --- SE NÃO, ADIÇÃO NO CÁLCULO ---
+
+                else{
+                    tree->boat_margin = SIDE_1;
+                    tree->n_cannibal = n_cannibalAD;
+                    tree->n_missionary = n_missionaryAD;
+                }
             }
-           
-            arvore->irmao = criarFilhos(arvore->irmao, prev_node, ++ind_possibilidades);
+            // --- IR PARA O OUTRO FILHO COM OUTRA CONFIGURAÇÃO ---
+            tree->right = children_generate(tree->right, prev_node, ++ind_config);
         }
-        else arvore = criarFilhos(arvore, prev_node, ++ind_possibilidades);
-        
+        else tree = children_generate(tree, prev_node, ++ind_config);
+
     }
 
-   
-    return arvore;
+    // --- RETORNA O RAMO ---
+    return tree;
 }
+// --- PRINTAR SOLUÇÃO ---
+void print_solucion(Tree *tree){
+    printf("Margem : %d\n", tree->boat_margin);
+    if(tree->boat_margin == SIDE_1){
+        printf("Nº de Canibais: %d\t\tNº de Missionários: %d\n", tree->n_cannibal, tree->n_missionary);
+    }
+    else{
+        printf("Nº de Canibais: %d\t\tNº de Missionários: %d\n", N_CANNIBAL - tree->n_cannibal,N_MISSIONARY - tree->n_missionary);
+    }
 
-
-Arvore* DSF(Arvore *arvore, int border_limit, Arvore *result){
-    if(arvore->deep == border_limit){
-        if(checarSolucao(arvore)){
-            return arvore;
+    if(tree->father != NULL){
+        print_solucion(tree->father);
+    }
+}
+// --- BUSCA EM PROFUNDIDADE (INTERATIVA) ---
+Tree* deep_search(Tree *tree, int border_limit, Tree *result){
+    if(tree->line == border_limit){
+        if(is_solution(tree)){
+            return tree;
         }
     }
     else{
-        arvore->filho = criarFilhos(arvore->filho, arvore, 0);
-    }
-    
-    if(arvore->filho != NULL && (!checarSolucao(result))){
-
-        result = DSF(arvore->filho, border_limit, result);
+        tree->next = children_generate(tree->next, tree, 0);
     }
 
-    if(arvore->irmao != NULL && (!checarSolucao(result))){
-
-        result = DSF(arvore->irmao, border_limit, result);
+    if(tree->next != NULL && (!is_solution(result))){
+        result = deep_search(tree->next, border_limit, result);
     }
+
+    if(tree->right != NULL && (!is_solution(result))){
+        result = deep_search(tree->right, border_limit, result);
+    }
+
     return result;
 }
 
 int main(){
-    int border_limit = 0;
 
+   int border_limit = START_BORDER;
     while (TRUE){
-    
-        Arvore *arvore = iniciar_arvore();
+        idCount = 0;
+        Tree *tree = init();
 
-        Arvore *result = DSF(arvore, border_limit, arvore);
-
-        if(!checarSolucao(result)){
-            border_limit = border_limit + 1;
+        Tree *result = deep_search(tree, border_limit, tree);
+        if(!is_solution(result)){
+            border_limit++;
         }
         else{
-            printf("Solução encontrada\n");
-            printarSolucao(result);
+            printf("SOLUÇÂO ENCONTRADA!!!\n");
+            printf("Nº DE TRAVESSIAS : %d\n", border_limit);
+            print_solucion(result);
             break;
         }
-
-        
-        free(arvore);
+        free(tree);
     }
     return 0;
 }
